@@ -159,6 +159,56 @@ users/{uid}:
   instances) — lean toward storing the rule and expanding in the client for v1.
 - Color assignment defaults for Diana / Dan / Together.
 
+## Addendum (2026-06-29): To-do list & Photo vault
+
+Two features added after the initial v1 design was approved. The app's post-sign-in
+home becomes a **HomeShell** with a bottom navigation bar of three tabs:
+**Calendar** (the existing Month view), **To-dos**, and **Vault**.
+
+### Shared to-do list
+- A single **shared, flat** to-do list (no per-person tagging — unlike events).
+- A to-do has: **title**, **done** (checkbox), an optional **scheduledDate** (set when
+  it has been added to the calendar), and metadata (`createdBy`, `createdAt`).
+- Add a to-do via a simple text field; tick to complete; delete via swipe/long-press.
+- **"Add to calendar"** on a to-do: pick a date → creates a `CalendarEvent` (all-day,
+  owner `together` by default) and sets the to-do's `scheduledDate`. The to-do **stays
+  in the list** and shows a **"Scheduled · <date>"** badge. It is not removed.
+- Stored in Firestore collection `todos`; live-synced like events.
+
+### Photo vault (gimmick-gated)
+- A playful "secret vault" of photos, **separate** from the 12 month photos.
+- **Entry gimmick (not real security):** the Vault tab shows a fake fingerprint pad;
+  the user must **press and hold it for 3 seconds** (a circular progress ring fills) to
+  unlock and reveal the gallery. Releasing early resets. This is purely a gimmick — no
+  biometric/auth is involved.
+- After unlocking: a **shared** photo grid. Either partner can **upload** (image_picker),
+  **view** full-screen, and **delete** photos. Both see the same vault.
+- Photos stored in **Cloud Storage** under `vault/{id}.jpg`; metadata in Firestore
+  collection `vaultPhotos` (`storagePath`, `downloadUrl`, `uploadedBy`, `createdAt`).
+- The unlock state is per-session/in-memory (re-locks when leaving the tab/app); the
+  hold gesture is the only gate.
+
+### Data model additions (Firestore)
+```
+todos/{id}:
+  title: string
+  done: bool
+  scheduledDate: timestamp|null   // set when added to the calendar
+  createdBy: string (uid)
+  createdAt: timestamp
+
+vaultPhotos/{id}:
+  storagePath: string
+  downloadUrl: string
+  uploadedBy: string (uid)
+  createdAt: timestamp
+```
+
+### Security rules additions
+- `todos/{id}` and `vaultPhotos/{id}`: read/write restricted to the two couple UIDs
+  (same `isCouple()` rule as events). Storage `vault/{file}`: same restriction as
+  `monthPhotos`.
+
 ## Tech Stack Summary
 - **Flutter** (Dart), iOS-first via TestFlight
 - **Riverpod** for state management
